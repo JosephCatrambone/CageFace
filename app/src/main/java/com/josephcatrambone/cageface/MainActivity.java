@@ -6,6 +6,9 @@ import android.app.Fragment;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.PointF;
 import android.media.FaceDetector;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -28,6 +31,7 @@ import java.util.logging.Logger;
 
 
 public class MainActivity extends Activity {
+    public static final float MIN_FACE_CONFIDENCE = 0.4f;
 	private static final String IMAGE_PREFIX = "CAGEFACE_TEMP";
 	private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
 	private File lastFile = null;
@@ -59,7 +63,6 @@ public class MainActivity extends Activity {
 			// Save a file: path for use with ACTION_VIEW intents
 			return image;
 		} catch(IOException ioe) {
-			lastFile = null;
 			Logger.getAnonymousLogger().info("Unable to allocate image: " + ioe);
 			return null;
 		}
@@ -97,6 +100,7 @@ public class MainActivity extends Activity {
 				//Bitmap imageBitmap = (Bitmap) extras.get("data");
 				Bitmap imageBitmap = BitmapFactory.decodeFile(lastFile.getPath());
 				imageView.setImageBitmap(imageBitmap);
+				new BitmapWorkerTask(imageView).doInBackground(imageBitmap);
 
 				// Image captured and saved to fileUri specified in the Intent
 				//showMessage("Image saved to:\n" + data.getData());
@@ -130,11 +134,6 @@ public class MainActivity extends Activity {
 
 		Bitmap bitmap = BitmapFactory.decodeFile(filename, bmOptions);
 		imageView.setImageBitmap(bitmap);
-	}
-
-	public void cagePicture(View view) {
-		Logger.getAnonymousLogger().info("cagePicture");
-		//android.media.FaceDetector
 	}
 
 	public void savePicture(View view) {
@@ -176,7 +175,7 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	class BitmapWorkerTask extends AsyncTask<Integer, Void, Bitmap> {
+	class BitmapWorkerTask extends AsyncTask<Bitmap, Integer, Bitmap> {
 		private final WeakReference<ImageView> imageViewReference;
 		private final int MAX_FACES = 10;
 
@@ -187,19 +186,59 @@ public class MainActivity extends Activity {
 
 		// Decode image in background.
 		@Override
-		protected Bitmap doInBackground(Integer... params) {
+		protected Bitmap doInBackground(Bitmap... params) {
 			// Load image and find faces
-			Bitmap imageBitmap = BitmapFactory.decodeFile(lastFile.getPath());
+			//Bitmap imageBitmap = BitmapFactory.decodeFile(lastFile.getPath());
+			Bitmap sourceBitmap = params[0];
+			Bitmap imageBitmap = Bitmap.createBitmap(
+				sourceBitmap.getWidth(), sourceBitmap.getHeight(), Bitmap.Config.RGB_565 // Have to use 565 for face detection
+			);
+			Canvas canvas = new Canvas(imageBitmap);
+			Paint paint = new Paint();
+			canvas.drawBitmap(sourceBitmap, 0, 0, paint);
+
+			// Find faces
+			// Face detection only works on bitmaps in 565 form.
 			FaceDetector faceDetector = new FaceDetector(imageBitmap.getWidth(), imageBitmap.getHeight(), MAX_FACES);
 			FaceDetector.Face[] faces = new FaceDetector.Face[MAX_FACES];
 			int facesFound = faceDetector.findFaces(imageBitmap, faces);
+			Logger.getAnonymousLogger().info("Found " + facesFound + " faces.");
 
 			// NICHOLAS CAGE to each face.
+			for(int i=0; i < facesFound; i++) {
+				FaceDetector.Face f = faces[i];
+				PointF midpoint = new PointF();
+				float eyeDistance = 0.0f; // We normalize all our face images to the 0/1 range, so this can be a constant multiplier.
+				float angleX, angleY, angleZ;
+				Bitmap cageface = null;
 
-			// Draw to bitmap
+				if(f.confidence() > MIN_FACE_CONFIDENCE) {
+					// Fill face values
+					f.getMidPoint(midpoint);
+					eyeDistance = f.eyesDistance();
+					angleX = f.pose(FaceDetector.Face.EULER_X);
+					angleY = f.pose(FaceDetector.Face.EULER_Y);
+					angleZ = f.pose(FaceDetector.Face.EULER_Z);
+
+					// Look up cage face from information
+					Logger.getAnonymousLogger().info("Detected face with " +
+						"confidence: " +	f.confidence() +
+						" eyeDist: " + eyeDistance +
+						" position: " + midpoint.x + "," + midpoint.y +
+						" angle: " + angleX + "," + angleY + "," + angleZ);
+
+					// Write cage-face to bitmap.
+				}
+
+			}
 			
 			return imageBitmap;
 			//return decodeSampledBitmapFromResource(getResources(), data, 100, 100));
+		}
+
+		@Override
+		protected void onProgressUpdate(Integer... progress) {
+			// Do update
 		}
 
 		// Once complete, see if ImageView is still around and set bitmap.
