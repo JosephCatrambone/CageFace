@@ -26,7 +26,10 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.util.logging.Logger;
 
@@ -36,6 +39,7 @@ public class MainActivity extends Activity {
 	private static final String IMAGE_PREFIX = "CAGEFACE_TEMP";
 	private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
 	private File lastFile = null;
+	private Bitmap lastBitmap = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -137,13 +141,20 @@ public class MainActivity extends Activity {
 		imageView.setImageBitmap(bitmap);
 	}
 
-	public void savePicture(View view) {
+	public void sharePicture(View view) {
 		Logger.getAnonymousLogger().info("savePicture");
 		//Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
 		//File f = new File(mCurrentPhotoPath);
 		//Uri contentUri = Uri.fromFile(f);
 		//mediaScanIntent.setData(contentUri);
-		//this.sendBroadcast(mediaScanIntent);
+		//this.sendBroadcast(mediaScanIntent); // Not workin'.
+
+		Intent shareIntent = new Intent();
+		shareIntent.setAction(Intent.ACTION_SEND);
+		shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(lastFile));
+		shareIntent.setType("image/*");
+		shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+		startActivity(Intent.createChooser(shareIntent, "Share Picture"));
 	}
 
 
@@ -264,10 +275,24 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onPostExecute(Bitmap bitmap) {
 			Logger.getAnonymousLogger().info("Finished processing cage faces.");
-			if (imageViewReference != null && bitmap != null) {
-				final ImageView imageView = imageViewReference.get();
-				if (imageView != null) {
-					imageView.setImageBitmap(bitmap);
+			if(bitmap != null) {
+				// Save bitmap
+				try {
+					FileOutputStream fout = new FileOutputStream(lastFile);
+					bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fout);
+					fout.close();
+				} catch(FileNotFoundException fnfe) {
+					Logger.getAnonymousLogger().info("File not found exception while writing bitmap to output.");
+				} catch(IOException ioe) {
+					Logger.getAnonymousLogger().info("IOException while writing image output.");
+				}
+
+				// Save image reference
+				if (imageViewReference != null) {
+					final ImageView imageView = imageViewReference.get();
+					if (imageView != null) {
+						imageView.setImageBitmap(bitmap);
+					}
 				}
 			}
 		}
