@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.media.FaceDetector;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -100,7 +101,7 @@ public class MainActivity extends Activity {
 				//Bitmap imageBitmap = (Bitmap) extras.get("data");
 				Bitmap imageBitmap = BitmapFactory.decodeFile(lastFile.getPath());
 				imageView.setImageBitmap(imageBitmap);
-				new BitmapWorkerTask(imageView).doInBackground(imageBitmap);
+				new BitmapWorkerTask(imageView).execute(imageBitmap);
 
 				// Image captured and saved to fileUri specified in the Intent
 				//showMessage("Image saved to:\n" + data.getData());
@@ -138,6 +139,11 @@ public class MainActivity extends Activity {
 
 	public void savePicture(View view) {
 		Logger.getAnonymousLogger().info("savePicture");
+		//Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+		//File f = new File(mCurrentPhotoPath);
+		//Uri contentUri = Uri.fromFile(f);
+		//mediaScanIntent.setData(contentUri);
+		//this.sendBroadcast(mediaScanIntent);
 	}
 
 
@@ -197,6 +203,10 @@ public class MainActivity extends Activity {
 			Paint paint = new Paint();
 			canvas.drawBitmap(sourceBitmap, 0, 0, paint);
 
+			// Load cageface
+			Bitmap cageface = BitmapFactory.decodeResource(getResources(), R.drawable.cageface_0);
+			float scaleFactor = 1.0f/500;
+
 			// Find faces
 			// Face detection only works on bitmaps in 565 form.
 			FaceDetector faceDetector = new FaceDetector(imageBitmap.getWidth(), imageBitmap.getHeight(), MAX_FACES);
@@ -210,7 +220,6 @@ public class MainActivity extends Activity {
 				PointF midpoint = new PointF();
 				float eyeDistance = 0.0f; // We normalize all our face images to the 0/1 range, so this can be a constant multiplier.
 				float angleX, angleY, angleZ;
-				Bitmap cageface = null;
 
 				if(f.confidence() > MIN_FACE_CONFIDENCE) {
 					// Fill face values
@@ -227,7 +236,17 @@ public class MainActivity extends Activity {
 						" position: " + midpoint.x + "," + midpoint.y +
 						" angle: " + angleX + "," + angleY + "," + angleZ);
 
+					Logger.getAnonymousLogger().info("Cage face left:" + ((cageface.getWidth()*scaleFactor*eyeDistance/2) + midpoint.x));
+
 					// Write cage-face to bitmap.
+					Rect source = new Rect(0, 0, cageface.getWidth(), cageface.getHeight());
+					Rect destination = new Rect(
+						(int)((-cageface.getWidth()*scaleFactor*eyeDistance) + midpoint.x),
+						(int)((-cageface.getHeight()*scaleFactor*eyeDistance) + midpoint.y),
+						(int)((cageface.getWidth()*scaleFactor*eyeDistance) + midpoint.x),
+						(int)((cageface.getHeight()*scaleFactor*eyeDistance) + midpoint.y)
+					);
+					canvas.drawBitmap(cageface, source, destination, paint);
 				}
 
 			}
@@ -244,6 +263,7 @@ public class MainActivity extends Activity {
 		// Once complete, see if ImageView is still around and set bitmap.
 		@Override
 		protected void onPostExecute(Bitmap bitmap) {
+			Logger.getAnonymousLogger().info("Finished processing cage faces.");
 			if (imageViewReference != null && bitmap != null) {
 				final ImageView imageView = imageViewReference.get();
 				if (imageView != null) {
