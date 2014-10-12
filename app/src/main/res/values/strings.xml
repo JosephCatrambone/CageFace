@@ -2,7 +2,7 @@
 <resources>
 
 	<string name="app_name">CageFace</string>
-	<string name="hello_world">Hello world!</string>
+	<string name="hello_world">NOT THE BEES!</string>
 	<string name="take_picture">Take Picture</string>
 	<string name="cage_picture">Cage Picture</string>
 	<string name="save_picture">Save Picture</string>
