@@ -8,6 +8,11 @@
 	<string name="cage_picture">Cage Picture</string>
 	<string name="save_picture">Save Picture</string>
 	<string name="share_picture">Share Picture</string>
-	<string name="action_settings">Settings</string>
+
+	<string name="big_head_setting">Bigger Heads</string>
+	<string name="small_head_setting">Smaller Heads</string>
+	<string name="more_heads_setting">More Heads</string>
+	<string name="fewer_heads_setting">Fewer Heads</string>
+	<string name="reset_setting">Reset Settings</string>
 
 </resources>

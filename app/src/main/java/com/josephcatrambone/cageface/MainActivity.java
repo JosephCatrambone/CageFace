@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.os.Build;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
@@ -35,8 +36,9 @@ import java.util.logging.Logger;
 
 
 public class MainActivity extends Activity {
-    public static final float MIN_FACE_CONFIDENCE = 0.4f;
-	private static final String IMAGE_PREFIX = "CAGEFACE_TEMP";
+	public static float HEAD_SCALE = 1.0f;
+	public static float FACE_CONFIDENCE = 0.4f;
+	private static final String IMAGE_PREFIX = "CAGEFACE_IMG_";
 	private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
 	private File lastFile = null;
 	private Bitmap lastBitmap = null;
@@ -99,6 +101,11 @@ public class MainActivity extends Activity {
 		if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE) {
 			if (resultCode == RESULT_OK) {
 				ImageView imageView = (ImageView)findViewById(R.id.image_area);
+
+				// Set the text to 'working'
+				TextView displayText = (TextView)findViewById(R.id.text_area);
+				displayText.setText(R.string.working);
+				showMessage(getText(R.string.working).toString());
 
 				// Assign preview to image view
 				//Bundle extras = data.getExtras();
@@ -171,8 +178,24 @@ public class MainActivity extends Activity {
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		if (id == R.id.action_settings) {
+		if (id == R.id.action_bigger_heads) {
+			HEAD_SCALE += 0.1f;
 			return true;
+		} else if(id == R.id.action_smaller_heads) {
+			HEAD_SCALE -= 0.1f;
+			if(HEAD_SCALE < 0.1f) { HEAD_SCALE = 0.1f; }
+			return true;
+		} else if(id == R.id.action_more_heads) {
+			FACE_CONFIDENCE -= 0.05f;
+			if(FACE_CONFIDENCE < 0.2f) { FACE_CONFIDENCE = 0.2f; }
+			return true;
+		} else if(id == R.id.action_fewer_heads) {
+			FACE_CONFIDENCE += 0.05f;
+			if(FACE_CONFIDENCE > 0.9f) { FACE_CONFIDENCE = 0.9f; }
+			return true;
+		} else if(id == R.id.action_reset) {
+			HEAD_SCALE = 1.0f;
+			FACE_CONFIDENCE = 0.4f;
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -216,7 +239,7 @@ public class MainActivity extends Activity {
 
 			// Load cageface
 			Bitmap cageface = BitmapFactory.decodeResource(getResources(), R.drawable.cageface_0);
-			float scaleFactor = 1.0f/500;
+			float scaleFactor = HEAD_SCALE * 1.0f/600;
 
 			// Find faces
 			// Face detection only works on bitmaps in 565 form.
@@ -232,7 +255,7 @@ public class MainActivity extends Activity {
 				float eyeDistance = 0.0f; // We normalize all our face images to the 0/1 range, so this can be a constant multiplier.
 				float angleX, angleY, angleZ;
 
-				if(f.confidence() > MIN_FACE_CONFIDENCE) {
+				if(f.confidence() > FACE_CONFIDENCE) {
 					// Fill face values
 					f.getMidPoint(midpoint);
 					eyeDistance = f.eyesDistance();
@@ -294,6 +317,10 @@ public class MainActivity extends Activity {
 						imageView.setImageBitmap(bitmap);
 					}
 				}
+
+				// Set the text to 'working'
+				TextView displayText = (TextView)findViewById(R.id.text_area);
+				displayText.setText(R.string.greeting);
 			}
 		}
 	}
